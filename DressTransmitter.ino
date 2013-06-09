@@ -36,12 +36,11 @@ const unsigned long interval = 1; //ms
 unsigned long last_sent;
 
 // Structure of our payload
-// Structure of our payload
 struct payload_t
 {
     unsigned long ms;
-    int mode;
-    int eq[7];
+    byte mode;
+    byte eq[7];
 } payload;
 
 
@@ -98,26 +97,26 @@ void checkEQ()
         delayMicroseconds(30); // Allow output to settle
         
         spectrumValue[i] = analogRead(analogPin);
-        
-        // Constrain any value above 1023 or below filterValue
-        spectrumValue[i] = constrain(spectrumValue[i], filterValue, 1023);
-        
-        // Remap the value to a number between 0 and 255
-        spectrumValue[i] = map(spectrumValue[i], filterValue, 1023, 0, 255);
-        
-        // Remove serial stuff after debugging
-        //Serial.print(spectrumValue[i]);
-        //Serial.print(" ");
-        
-        for(int i = 0;i<7;i++)
-        {
-            payload.eq[i] = spectrumValue[i];
-        }
+        spectrumValue[i] = constrain(spectrumValue[i], filterValue, 1023);        // Constrain any value above 1023 or below filterValue
+        spectrumValue[i] = map(spectrumValue[i], filterValue, 1023, 0, 255);        // Remap the value to a number between 0 and 255
+        payload.eq[i] = (byte)spectrumValue[i];
         
         digitalWrite(strobePin, HIGH);
+        
+    }    
+}
+
+int iMode = 0;
+int getModeFromSerial() {
+    // if there's any serial available, read it:
+    while (Serial.available() > 0) {
+        // look for the next valid integer in the incoming serial stream:
+        iMode = Serial.parseInt();
+        Serial.print("switching to:");Serial.println(iMode);
+        // look for the newline. That's the end of your
+        // sentence:
     }
-    
-    Serial.println();
+    return iMode;
 }
 
 void loop(void)
@@ -134,6 +133,8 @@ void loop(void)
         
         //Serial.print("Sending...");
         payload.ms = millis();
+        payload.mode = getModeFromSerial();
+        
         RF24NetworkHeader header(/*to node*/ other_node);
         bool ok = network.write(header,&payload,sizeof(payload));
         //if (ok)
@@ -142,7 +143,7 @@ void loop(void)
         //    Serial.println("failed.");
     }
     
-    
+    /*
     if(Serial.available())
     {
         char c = toupper(Serial.read());
@@ -153,6 +154,8 @@ void loop(void)
                 break;
         }
     }
+    */
+    
     
 }
 // vim:ai:cin:sts=2 sw=2 ft=cpp
