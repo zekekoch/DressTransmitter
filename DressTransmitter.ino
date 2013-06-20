@@ -20,17 +20,10 @@
 // nRF24L01(+) radio attached using Getting Started board
 RF24 radio(9,10);
 
-// Network uses that radio
-RF24Network network(radio);
-
-// Address of our node
-const uint16_t this_node = 1;
-
-// Address of the other node
-const uint16_t other_node = 0;
-
-// How often to send 'hello world to the other unit
-const unsigned long interval = 1; //ms
+RF24Network network(radio);// Network uses that radio
+const uint16_t this_node = 1;// Address of our node
+const uint16_t other_node = 0;// Address of the other node
+const unsigned long interval = 1; //ms// How often to send 'hello world to the other unit
 
 // When did we last send?
 unsigned long last_sent;
@@ -43,27 +36,22 @@ struct payload_t
     byte eq[7];
 } payload;
 
-
-int animation = 1;
-
+int animation = 0;
 
 int analogPin = 0; // MSGEQ7 OUT
 int strobePin = 4; // MSGEQ7 STROBE
 int resetPin = 5; // MSGEQ7 RESET
 int spectrumValue[7];
-
-// MSGEQ7 OUT pin produces values around 50-80
-// when there is no input, so use this value to
-// filter out a lot of the chaff.
-int filterValue = 80;
+const int filterValue = 80;
 
 void setup(void)
 {
     Serial.begin(57600);
-    Serial.println("RF24Network/examples/helloworld_tx/");
     
     SPI.begin();
+    radio.setDataRate(RF24_250KBPS);
     radio.begin();
+    radio.setDataRate(RF24_250KBPS);
     network.begin(/*channel*/ 90, /*node address*/ this_node);
     
     pinMode(5, OUTPUT);
@@ -72,7 +60,6 @@ void setup(void)
     digitalWrite(5,LOW);
     
     pinMode(analogPin, INPUT);
-    // Write to MSGEQ7 STROBE and RESET
     pinMode(strobePin, OUTPUT);
     pinMode(resetPin, OUTPUT);
     
@@ -121,6 +108,7 @@ int getModeFromSerial() {
 
 void loop(void)
 {
+    static unsigned long counter = 0;
     checkEQ();
     // Pump the network regularly
     network.update();
@@ -132,15 +120,24 @@ void loop(void)
         last_sent = now;
         
         //Serial.print("Sending...");
-        payload.ms = millis();
+        payload.ms = counter++;
         payload.mode = getModeFromSerial();
         
-        RF24NetworkHeader header(/*to node*/ other_node);
+        RF24NetworkHeader header(other_node);
         bool ok = network.write(header,&payload,sizeof(payload));
-        //if (ok)
-        //    Serial.println("ok.");
-        //else
-        //    Serial.println("failed.");
+        
+        if (ok)
+        {
+            Serial.print("ok: ");
+            for(int i = 0;i<7;i++){
+                Serial.print(payload.eq[i]);
+                Serial.print(" ");
+            }
+            Serial.println();
+        }
+        else
+            Serial.println("failed.");
+        
     }
     
     /*
